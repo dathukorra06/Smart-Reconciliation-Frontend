@@ -99,3 +99,39 @@ body {
 .status-duplicate {
   @apply bg-purple-100 text-purple-800;
 }
+
+/* Dashboard specific styles */
+.dashboard-header {
+  @apply mb-8 border-b border-gray-200 pb-4;
+}
+
+.chart-container {
+  @apply bg-white rounded-lg shadow-md p-6;
+}
+
+.stats-card {
+  @apply bg-white rounded-lg shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200;
+}
+
+.stats-card-number {
+  @apply text-3xl font-bold mb-1;
+}
+
+.stats-card-label {
+  @apply text-gray-600 text-sm;
+}
+
+.chart-title {
+  @apply text-xl font-semibold text-gray-800 mb-4;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .chart-container {
+    @apply p-4;
+  }
+  
+  .stats-card-number {
+    @apply text-2xl;
+  }
+}
