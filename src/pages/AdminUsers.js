@@ -24,8 +24,8 @@ const AdminUsers = () => {
       setUsers(response.data.data);
       setError(null);
     } catch (err) {
-      console.error('Error fetching users:', err);
-      setError('Failed to fetch users. Please try again later.');
+      console.error(err);
+      setError('Failed to fetch users');
     } finally {
       setLoading(false);
     }
@@ -36,57 +36,48 @@ const AdminUsers = () => {
       await axios.put(`/api/admin/users/${userId}`, { role: newRole });
       setUsers(users.map(u => (u._id === userId ? { ...u, role: newRole } : u)));
     } catch (err) {
-      console.error('Error updating role:', err);
       alert('Failed to update role');
     }
   };
 
   const handleStatusChange = async (userId, currentStatus) => {
-    const url = currentStatus
-      ? `/api/admin/users/${userId}`
-      : `/api/admin/users/${userId}/activate`;
-
     try {
       if (currentStatus) {
-        if (!window.confirm('Are you sure you want to deactivate this user?')) return;
-        await axios.delete(url);
+        if (!window.confirm('Deactivate this user?')) return;
+        await axios.delete(`/api/admin/users/${userId}`);
       } else {
-        await axios.put(url);
+        await axios.put(`/api/admin/users/${userId}/activate`);
       }
 
-      setUsers(users.map(u => (u._id === userId ? { ...u, isActive: !currentStatus } : u)));
+      setUsers(users.map(u =>
+        u._id === userId ? { ...u, isActive: !currentStatus } : u
+      ));
     } catch (err) {
-      console.error('Error changing status:', err);
-      alert('Failed to update user status');
+      alert('Failed to update status');
     }
   };
 
-  if (loading) return <div className="text-center mt-10">Loading users...</div>;
-  if (error) return <div className="text-center mt-10 text-red-600 font-bold">{error}</div>;
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div className="text-red-600">{error}</div>;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">User Management</h1>
-
-      <table className="min-w-full bg-white shadow rounded">
+    <div>
+      <h1>User Management</h1>
+      <table border="1" width="100%">
         <thead>
           <tr>
-            <th className="p-3">Name</th>
-            <th className="p-3">Email</th>
-            <th className="p-3">Role</th>
-            <th className="p-3">Status</th>
-            <th className="p-3">Action</th>
+            <th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th>
           </tr>
         </thead>
         <tbody>
           {users.map(u => (
             <tr key={u._id}>
-              <td className="p-3">{u.name}</td>
-              <td className="p-3">{u.email}</td>
-              <td className="p-3">
+              <td>{u.name}</td>
+              <td>{u.email}</td>
+              <td>
                 <select
                   value={u.role}
-                  onChange={(e) => handleRoleChange(u._id, e.target.value)}
+                  onChange={e => handleRoleChange(u._id, e.target.value)}
                   disabled={u._id === user._id}
                 >
                   <option value="admin">Admin</option>
@@ -94,8 +85,8 @@ const AdminUsers = () => {
                   <option value="viewer">Viewer</option>
                 </select>
               </td>
-              <td className="p-3">{u.isActive ? 'Active' : 'Inactive'}</td>
-              <td className="p-3">
+              <td>{u.isActive ? 'Active' : 'Inactive'}</td>
+              <td>
                 <button
                   onClick={() => handleStatusChange(u._id, u.isActive)}
                   disabled={u._id === user._id}
