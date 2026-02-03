@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const AuditTimeline = ({ recordId }) => {
@@ -14,7 +14,7 @@ const AuditTimeline = ({ recordId }) => {
   const [expandedEvent, setExpandedEvent] = useState(null);
   const [users, setUsers] = useState([]);
 
-  // Fetch available users for filter dropdown
+  // Fetch available users
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -27,15 +27,14 @@ const AuditTimeline = ({ recordId }) => {
     fetchUsers();
   }, []);
 
-  useEffect(() => {
-    fetchAuditTrail();
-  }, [recordId, filters]);
+  // ✅ Wrap in useCallback so ESLint is happy
+  const fetchAuditTrail = useCallback(async () => {
+    if (!recordId) return;
 
-  const fetchAuditTrail = async () => {
     try {
       setLoading(true);
       const queryParams = new URLSearchParams();
-      
+
       if (filters.actionType) queryParams.append('action', filters.actionType);
       if (filters.dateFrom) queryParams.append('startDate', filters.dateFrom);
       if (filters.dateTo) queryParams.append('endDate', filters.dateTo);
@@ -45,12 +44,17 @@ const AuditTimeline = ({ recordId }) => {
       setAuditEvents(response.data.data.auditTrail);
       setError(null);
     } catch (err) {
-      setError('Failed to load audit trail');
       console.error('Audit trail fetch error:', err);
+      setError('Failed to load audit trail');
     } finally {
       setLoading(false);
     }
-  };
+  }, [recordId, filters]);
+
+  // ✅ ESLint-correct dependency
+  useEffect(() => {
+    fetchAuditTrail();
+  }, [fetchAuditTrail]);
 
   const handleFilterChange = (name, value) => {
     setFilters(prev => ({
@@ -70,31 +74,21 @@ const AuditTimeline = ({ recordId }) => {
 
   const getActionIcon = (action) => {
     switch (action) {
-      case 'create':
-        return '➕';
-      case 'update':
-        return '✏️';
-      case 'delete':
-        return '🗑️';
-      case 'reconcile':
-        return '🔄';
-      default:
-        return '📋';
+      case 'create': return '➕';
+      case 'update': return '✏️';
+      case 'delete': return '🗑️';
+      case 'reconcile': return '🔄';
+      default: return '📋';
     }
   };
 
   const getActionColor = (action) => {
     switch (action) {
-      case 'create':
-        return 'text-green-600';
-      case 'update':
-        return 'text-blue-600';
-      case 'delete':
-        return 'text-red-600';
-      case 'reconcile':
-        return 'text-purple-600';
-      default:
-        return 'text-gray-600';
+      case 'create': return 'text-green-600';
+      case 'update': return 'text-blue-600';
+      case 'delete': return 'text-red-600';
+      case 'reconcile': return 'text-purple-600';
+      default: return 'text-gray-600';
     }
   };
 
@@ -121,7 +115,7 @@ const AuditTimeline = ({ recordId }) => {
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h3 className="text-xl font-semibold mb-6">Audit Timeline</h3>
-      
+
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <div>
@@ -138,7 +132,7 @@ const AuditTimeline = ({ recordId }) => {
             <option value="reconcile">Reconcile</option>
           </select>
         </div>
-        
+
         <div>
           <label className="block text-gray-700 mb-2 text-sm">From Date</label>
           <input
@@ -148,7 +142,7 @@ const AuditTimeline = ({ recordId }) => {
             className="form-control text-sm"
           />
         </div>
-        
+
         <div>
           <label className="block text-gray-700 mb-2 text-sm">To Date</label>
           <input
@@ -158,7 +152,7 @@ const AuditTimeline = ({ recordId }) => {
             className="form-control text-sm"
           />
         </div>
-        
+
         <div>
           <label className="block text-gray-700 mb-2 text-sm">User</label>
           <select
@@ -174,123 +168,43 @@ const AuditTimeline = ({ recordId }) => {
             ))}
           </select>
         </div>
-        
+
         <div className="flex items-end">
-          <button
-            onClick={resetFilters}
-            className="btn btn-secondary text-sm w-full"
-          >
+          <button onClick={resetFilters} className="btn btn-secondary text-sm w-full">
             Reset
           </button>
         </div>
       </div>
-      
+
       {/* Timeline */}
       <div className="relative">
-        {/* Timeline line */}
         <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-        
+
         {auditEvents.length > 0 ? (
           <div className="space-y-8">
-            {auditEvents.map((event, index) => (
+            {auditEvents.map(event => (
               <div key={event._id} className="relative">
-                {/* Timeline dot */}
                 <div className="absolute left-0 w-8 h-8 rounded-full bg-white border-4 border-blue-500 flex items-center justify-center z-10">
                   <span className={`text-lg ${getActionColor(event.action)}`}>
                     {getActionIcon(event.action)}
                   </span>
                 </div>
-                
-                {/* Event card */}
+
                 <div className="ml-12">
-                  <div 
-                    className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors"
-                    onClick={() => setExpandedEvent(
-                      expandedEvent === event._id ? null : event._id
-                    )}
+                  <div
+                    className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100"
+                    onClick={() => setExpandedEvent(expandedEvent === event._id ? null : event._id)}
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h4 className="font-semibold text-gray-900">
-                          {event.action.charAt(0).toUpperCase() + event.action.slice(1)} Event
-                        </h4>
-                        <p className="text-sm text-gray-600">
-                          {event.userId?.name || 'System'} • {formatDate(event.timestamp)}
-                        </p>
-                      </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        event.source === 'upload' ? 'bg-green-100 text-green-800' :
-                        event.source === 'manual' ? 'bg-blue-100 text-blue-800' :
-                        'bg-purple-100 text-purple-800'
-                      }`}>
-                        {event.source}
-                      </span>
-                    </div>
-                    
-                    <div className="text-sm text-gray-700">
-                      {event.changedFields && event.changedFields.length > 0 && (
-                        <p>Fields changed: {event.changedFields.join(', ')}</p>
-                      )}
-                    </div>
-                    
-                    <div className="mt-2 text-sm text-gray-500">
-                      Click to view details
-                    </div>
+                    <h4 className="font-semibold">{event.action}</h4>
+                    <p className="text-sm">{formatDate(event.timestamp)}</p>
                   </div>
-                  
-                  {/* Expanded details */}
-                  {expandedEvent === event._id && (
-                    <div className="ml-12 mt-2 bg-white border rounded-lg p-4 shadow-sm">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <h5 className="font-medium text-gray-900 mb-2">Before Changes</h5>
-                          <div className="bg-red-50 p-3 rounded">
-                            {event.oldValue ? (
-                              <pre className="text-sm text-gray-700 whitespace-pre-wrap">
-                                {JSON.stringify(event.oldValue, null, 2)}
-                              </pre>
-                            ) : (
-                              <p className="text-gray-500 italic">No previous data</p>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <h5 className="font-medium text-gray-900 mb-2">After Changes</h5>
-                          <div className="bg-green-50 p-3 rounded">
-                            {event.newValue ? (
-                              <pre className="text-sm text-gray-700 whitespace-pre-wrap">
-                                {JSON.stringify(event.newValue, null, 2)}
-                              </pre>
-                            ) : (
-                              <p className="text-gray-500 italic">No new data</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <p className="text-sm text-gray-600">
-                          <strong>User:</strong> {event.userId?.name || 'System'} ({event.userId?.email || 'N/A'})
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <strong>Timestamp:</strong> {formatDate(event.timestamp)}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <strong>Source:</strong> {event.source}
-                        </p>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
           </div>
         ) : (
           <div className="text-center py-8 text-gray-500">
-            <div className="text-4xl mb-2">📋</div>
-            <p>No audit events found for this record</p>
-            <p className="text-sm mt-1">Try adjusting your filters</p>
+            No audit events found
           </div>
         )}
       </div>
